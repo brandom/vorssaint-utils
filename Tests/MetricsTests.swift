@@ -23444,6 +23444,82 @@ struct MetricsTests {
         expect(deepLink("vorssaint://run/action/screenshot") == nil,
                "a run link with extra path parts is rejected")
 
+        // MARK: Deep link reference stays true
+
+        // docs/DEEP_LINKS.md promises which IDs a vorssaint://run link
+        // accepts. This check reads the catalog's own literals and the
+        // Settings page list at their sources, then fails when either ships
+        // without appearing on that page, so the reference cannot quietly
+        // fall behind the app.
+        let catalogSource = (try? String(contentsOfFile:
+                "Sources/Vorssaint/Services/CommandBar/CommandBarCatalog.swift",
+                encoding: .utf8)) ?? ""
+        let settingsSource = (try? String(contentsOfFile:
+                "Sources/Vorssaint/UI/Settings/FeatureVisibilitySupport.swift",
+                encoding: .utf8)) ?? ""
+        let deepLinkDoc = (try? String(contentsOfFile:
+                "docs/DEEP_LINKS.md", encoding: .utf8)) ?? ""
+        expect(!catalogSource.isEmpty && !settingsSource.isEmpty && !deepLinkDoc.isEmpty,
+               "the deep link reference files are readable from the repo root")
+        if !catalogSource.isEmpty && !deepLinkDoc.isEmpty {
+            // The pattern is a fixed literal; it cannot fail to compile.
+            let idPattern = try! NSRegularExpression(pattern: #""((?:action|toggle)\.[A-Za-z0-9.]*)""#)
+            let range = NSRange(catalogSource.startIndex..., in: catalogSource)
+            var catalogIDs = Set<String>()
+            idPattern.enumerateMatches(in: catalogSource, range: range) { match, _, _ in
+                guard let match, let full = Range(match.range(at: 1), in: catalogSource) else { return }
+                catalogIDs.insert(String(catalogSource[full]))
+            }
+            // An ID ending in a dot is the head of an interpolated family
+            // ("action.layout.\(direction)"); the page names such a family
+            // with its prefix followed by a placeholder.
+            for id in catalogIDs.sorted() {
+                if id.hasSuffix(".") {
+                    expect(deepLinkDoc.contains(id),
+                           "docs/DEEP_LINKS.md names the \(id)<…> family")
+                } else {
+                    // Concatenation on purpose: an interpolation here stalls the type checker.
+                    let quoted = "`" + id + "`"
+                    expect(deepLinkDoc.contains(quoted),
+                           "docs/DEEP_LINKS.md lists \(id)")
+                }
+            }
+            expect(catalogIDs.count > 40,
+                   "the catalog still yields its fixed IDs to the reference check (\(catalogIDs.count) found)")
+        }
+
+        func settingsPageNames(from source: String) -> [String] {
+            guard let header = source.range(of: "enum SettingsPage") else { return [] }
+            var depth = 0
+            var inside = false
+            var body = ""
+            for character in source[header.upperBound...] {
+                if character == "{" {
+                    depth += 1
+                    inside = true
+                    continue
+                }
+                if character == "}" {
+                    depth -= 1
+                    if inside && depth == 0 { break }
+                }
+                if inside { body.append(character) }
+            }
+            return body.components(separatedBy: "\n")
+                .filter { $0.trimmingCharacters(in: .whitespaces).hasPrefix("case ") }
+                .flatMap { $0.replacingOccurrences(of: "case ", with: "")
+                    .components(separatedBy: ",")
+                    .map { $0.trimmingCharacters(in: .whitespaces) } }
+                .filter { !$0.isEmpty && $0.allSatisfy { $0.isLetter || $0.isNumber } }
+        }
+        for name in settingsPageNames(from: settingsSource) {
+            let quoted = "`settings." + name + "`"
+            expect(deepLinkDoc.contains(quoted),
+                   "docs/DEEP_LINKS.md lists settings.\(name)")
+        }
+        expect(settingsPageNames(from: settingsSource).count > 20,
+               "the Settings page list still yields its pages to the reference check")
+
         // MARK: Result
 
         // MARK: Every defaults suite stays inside a namespace build.sh sweeps
