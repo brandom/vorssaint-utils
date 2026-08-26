@@ -23403,6 +23403,47 @@ struct MetricsTests {
                "a container an earlier version left world readable is tightened on the next write")
         try? FileManager.default.removeItem(at: privateRoot)
 
+        // MARK: Deep links
+
+        // The vorssaint:// scheme is how things outside the app ask it to
+        // run one of its own tools. The parser is the only gate on that
+        // door, so every rule about what gets in and what stays out is
+        // pinned here.
+        func deepLink(_ string: String) -> DeepLinkSupport.Request? {
+            guard let url = URL(string: string) else {
+                failures.append("deep link test URL failed to parse itself: \(string)")
+                checks += 1
+                return nil
+            }
+            return DeepLinkSupport.parse(url)
+        }
+
+        expect(deepLink("vorssaint://run/action.screenshot")?.stableKey == "action.screenshot",
+               "a plain run link carries its action id")
+        expect(deepLink("VORSSAINT://Run/action.screenshot")?.stableKey == "action.screenshot",
+               "the scheme and the verb are case insensitive")
+        expect(deepLink("vorssaint://run/action.soundOutput.ABC-012")?.stableKey == "action.soundOutput.ABC-012",
+               "an action id keeps its case, so device uid keys survive")
+        expect(deepLink("vorssaint://run/action.brightness?v=40") ==
+               DeepLinkSupport.Request(stableKey: "action.brightness", argument: 40),
+               "v arrives as the numeric argument")
+        expect(deepLink("vorssaint://run/action.brightness?v=-30")?.argument == -30,
+               "a negative v parses")
+        expect(deepLink("vorssaint://run/action.keepAwake?other=1") ==
+               DeepLinkSupport.Request(stableKey: "action.keepAwake", argument: nil),
+               "a query key other than v is not an argument")
+        expect(deepLink("vorssaint://run/action.brightness?v=abc") ==
+               DeepLinkSupport.Request(stableKey: "action.brightness", argument: nil),
+               "garbage v counts as absent, so the row can still ask for a number itself")
+        expect(deepLink("https://run/action.screenshot") == nil,
+               "another scheme is not ours")
+        expect(deepLink("vorssaint://settings/page") == nil,
+               "only the run verb is served")
+        expect(deepLink("vorssaint://run") == nil,
+               "a run link without an action id is rejected")
+        expect(deepLink("vorssaint://run/action/screenshot") == nil,
+               "a run link with extra path parts is rejected")
+
         // MARK: Result
 
         // MARK: Every defaults suite stays inside a namespace build.sh sweeps

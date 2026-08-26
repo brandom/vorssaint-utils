@@ -472,10 +472,34 @@ final class CommandBarService: ObservableObject {
             NSSound.beep()
             return
         }
-        // A row that would confirm, ask for input, or keep the field visible
-        // needs a real presentation just as it does when chosen from the bar.
-        // Emptying the Trash on one keypress with nothing asked is not a
-        // shortcut, it is an accident with a name.
+        dispatch(entry, argument: nil, key: key)
+    }
+
+    /// Runs a row requested by an external `vorssaint://` deep link.
+    /// Uses the same execution path as row shortcuts, including any required
+    /// confirmation or setup steps. Unlike row shortcuts, the Mac's own
+    /// Settings panes are refused here rather than opened.
+    func runExternalRow(withStableKey key: String, argument: Int?) {
+        guard let entry = freshFullEntry(forStableKey: key) else {
+            NSSound.beep()
+            return
+        }
+        dispatch(entry, argument: argument, key: key)
+    }
+
+    /// A row that would confirm, ask for input, or keep the field visible
+    /// needs a real presentation just as it does when chosen from the bar.
+    /// Emptying the Trash on one keypress with nothing asked is not a
+    /// shortcut, it is an accident with a name.
+    private func dispatch(_ entry: CommandBarEntry, argument: Int?, key: String) {
+        // An argument answers only the numeric prompt. A row that also
+        // confirms, or whose switch is off, still gets the bar, whose run(_)
+        // asks in the bar's own order.
+        if let range = entry.numericRange, let argument,
+           entry.confirmationPrompt == nil, entry.trouble == nil {
+            finish(entry, value: min(max(argument, range.lowerBound), range.upperBound))
+            return
+        }
         guard !entry.needsPrompt, !entry.keepsBarOpen else {
             show(promptingFor: key)
             return
