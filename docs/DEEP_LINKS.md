@@ -71,6 +71,8 @@ These are the `action.` IDs. They work only while their feature is installed.
 
 ### Keep awake
 
+`action.keepAwake` only takes the following preset durations: `15`, `30`, `60`, `120`, `240`, `480` minutes. All other values default to indefinite.
+
 | ID | What it runs | `v` |
 | --- | --- | --- |
 | `action.keepAwake` | Toggle keep awake | Minutes: `15` \| `30` \| `60` \| `120` \| `240` \| `480` |
