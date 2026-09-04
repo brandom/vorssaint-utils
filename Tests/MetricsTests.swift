@@ -23444,6 +23444,29 @@ struct MetricsTests {
         expect(deepLink("vorssaint://run/action/screenshot") == nil,
                "a run link with extra path parts is rejected")
 
+        // MARK: Settings pages resolve without a bar row
+
+        // The bar omits Settings pages an action row already opens, but the
+        // docs promise every page ID, so a settings.<page> link resolves
+        // against the page list itself. Only exact case names count: an
+        // unknown page stays an unknown ID, and beeps like one.
+        expect(DeepLinkSupport.settingsPage(from: "settings.general") == .general,
+               "the general page resolves even though the bar has no settings.general row")
+        expect(DeepLinkSupport.settingsPage(from: "settings.keyDebounce") == .keyDebounce,
+               "a page case name keeps its exact spelling")
+        expect(DeepLinkSupport.settingsPage(from: "settings.noSuchPage") == nil,
+               "an unknown settings page is an unknown ID")
+        expect(DeepLinkSupport.settingsPage(from: "settings.feature.shelf") == nil,
+               "a feature row is not a settings page")
+        expect(DeepLinkSupport.settingsPage(from: "settings.general.extra") == nil,
+               "a settings key with extra parts is not a page")
+        expect(DeepLinkSupport.settingsPage(from: "macsettings.com.apple.x") == nil,
+               "a System Settings pane is not a Vorssaint settings page")
+        expect(DeepLinkSupport.settingsPage(from: "action.screenshot") == nil,
+               "an action key is not a settings page")
+        expect(DeepLinkSupport.settingsPage(from: "settings") == nil,
+               "the bare settings prefix is not a page")
+
         // MARK: Deep link reference stays true
 
         // docs/DEEP_LINKS.md promises which IDs a vorssaint://run link

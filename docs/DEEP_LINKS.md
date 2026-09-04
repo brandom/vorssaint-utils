@@ -20,7 +20,7 @@ vorssaint://run/<id>?v=<number>
 Rules:
 
 - The scheme and the verb are case insensitive. The ID keeps its case.
-- An unknown ID, or an ID whose feature is not installed, makes Vorssaint beep. Nothing runs.
+- An unknown ID, or an ID whose feature is not installed, makes Vorssaint beep. Nothing runs. A Settings page that is hidden because its feature is off beeps the same way.
 - A row that would confirm a destructive step still asks, in the bar itself.
 - A row whose setup is missing opens the Settings page where that row lives. A row missing a system permission runs anyway, which is what triggers the system prompt.
 
