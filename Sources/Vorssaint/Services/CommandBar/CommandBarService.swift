@@ -699,16 +699,20 @@ final class CommandBarService: ObservableObject {
         // An argument answers only the numeric prompt. A row that also
         // confirms, or whose switch is off, still gets the bar, whose run(_)
         // asks in the bar's own order.
-        if let range = entry.numericRange, let argument,
-           entry.confirmationPrompt == nil, entry.trouble == nil {
-            finish(entry, value: min(max(argument, range.lowerBound), range.upperBound))
-            return
-        }
-        guard !entry.needsPrompt, !entry.keepsBarOpen else {
+        let answeredByArgument = entry.numericRange != nil && argument != nil
+            && entry.confirmationPrompt == nil && entry.trouble == nil
+        guard answeredByArgument || (!entry.needsPrompt && !entry.keepsBarOpen) else {
             show(promptingFor: key)
             return
         }
+        // The bar closes before the row runs, so text that happened to be
+        // typed is not learned as the way to reach the row — the same as
+        // when a link carries no number.
         if isVisible { hide() }
+        if answeredByArgument, let range = entry.numericRange, let argument {
+            finish(entry, value: min(max(argument, range.lowerBound), range.upperBound))
+            return
+        }
         finish(entry, value: nil)
     }
 
